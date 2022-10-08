@@ -1,0 +1,23 @@
+#
+---
+  - name: "Install cri-o on all nodes for: {{ project_tag }}"
+    hosts: "role_{{ batch_name }}"
+    roles:
+    - role: crio
+      become: yes
+  
+  - name: "Install minkube and related utilities"
+    hosts: "role_{{ batch_name }}"
+    roles:
+    - role: minikube
+      # intended to run as 'centos' user, so no on 'become'
+      become: no 
+  
+  - name: "Install desired things for hacking"
+    hosts: "role_{{ batch_name }}"
+    roles:
+    - role: hacking
+      # intended to run as 'centos' user, so no on 'become'
+      become: no 
+
+  

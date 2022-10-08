@@ -1,0 +1,19 @@
+# https://docs.ansible.com/ansible/latest/plugins/inventory.html#inventory-plugins
+# https://docs.ansible.com/ansible/latest/collections/amazon/aws/aws_ec2_inventory.html#ansible-collections-amazon-aws-aws-ec2-inventory
+# https://dev.to/vumdao/ansible-aws-ec2-dynamic-inventory-plugin-3bme
+plugin: amazon.aws.aws_ec2
+regions:
+  - us-east-1
+  - us-east-2
+filters:
+  tag:Name:
+    # ** Change Below to your Project Tag **
+    # I don't know how to include {{ project_tag }}
+    - jwm_tmp_hacking*
+  instance-state-name : running
+keyed_groups:
+  - prefix: role
+    key: tags['Role']
+hostnames:
+  - dns-name
+

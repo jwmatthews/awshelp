@@ -1,0 +1,35 @@
+my_name: jwm_tmp
+project_tag: "{{ my_name }}_hacking"
+# We need project_tag value to match what is set in: 'lab_hosts.aws_ec2.yml'
+
+# How many instances do we want to provision
+desired_num_instances: 1
+
+# You can ignore below and leave as-is, unless you are creating many instances
+# I've observed bad performance trying to create 40 instances at a time (~6 hours)
+# Create/Setup of 20 instances is ~ <30 mins, so batching creation and changing batch name below to help
+batch_name: batch1
+
+region_name: "us-east-1"
+key_name: '{{ project_tag }}_keypair'
+ec2_ssh_key_dir: "./keys"
+ec2_ssh_key_file_path: "{{ ec2_ssh_key_dir }}/{{ project_tag }}_{{ region_name }}.pem"
+ansible_ssh_private_key_file: "{{ ec2_ssh_key_file_path }}"
+
+instance_type: 't2.xlarge'
+
+# VPC
+vpc_cidr: 10.10.0.0/24
+vpc_name: "{{ project_tag }} VPC"
+ 
+# Subnet
+subnet_name: "{{ project_tag }} Subnet"
+subnet_cidr: 10.10.0.0/26
+ 
+# Internet Gateway Name
+igw_name: "{{ project_tag }} Traffic IGW"
+
+route_name: "{{ project_tag }} Route"
+ 
+security_group_name: "{{ project_tag }} Ansible Security Group"
+security_group_description: "{{ security_group_name }}"

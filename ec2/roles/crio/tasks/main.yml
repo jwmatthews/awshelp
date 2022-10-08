@@ -1,0 +1,100 @@
+---
+# dnf install epel-release
+# dnf module enable cri-o
+# dnf install cri-o
+- name: Enable EPEL
+  dnf:
+    name: "epel-release"
+    state: latest
+
+- name: "Enable cri-o module"
+  command: "dnf module enable -y cri-o"
+
+- name: Upgrade Packages
+  block:
+  - name: Upgrade all packages
+    dnf:
+      name: "*"
+      state: latest
+    register: dnf_updates
+  - debug:
+      var: dnf_updates
+  # Pattern from: https://www.jeffgeerling.com/blog/2018/reboot-and-wait-reboot-complete-ansible-playbook
+  # https://unix.stackexchange.com/questions/554692/ansible-2-8-how-to-reboot-machine-only-after-kernel-update-evaluating-array-va
+  - name: Reboot node if kernel has been updated
+    block:
+    - name: Reboot immediately if there was a change.
+      shell: "sleep 5 && reboot"
+      async: 1
+      poll: 0
+
+    - name: Wait for the reboot to complete if there was a change.
+      wait_for_connection:
+        connect_timeout: 20
+        sleep: 5
+        delay: 5
+        timeout: 300
+    when: dnf_updates.changed and dnf_updates.results|flatten|select('regex', '^kernel$') is any
+  when: upgrade_packages # default is to skip
+
+- name: Install net-tools to aid future debugging
+  dnf:
+    name: net-tools
+    state: latest
+
+- name: Install crio
+  dnf:
+    name: cri-o
+    state: latest
+
+- name: Make sure crio is enabled and started
+  systemd:
+    state: started
+    enabled: true
+    name: crio
+
+- name: Enable kernel modules for networking via /etc/modules-load.d
+  copy: 
+    src: "files/modules-load_d_crio.conf" 
+    dest: "/etc/modules-load.d/crio.conf" 
+    owner: "root" 
+    group: "root" 
+    mode: "0644"
+  register: kernel_network_modules
+
+- name: Restart systemd-modules-load.service to pick up changes to /etc/modules-load.d
+  command: "systemctl restart systemd-modules-load.service"
+  when: kernel_network_modules.changed
+
+- name: Ensure systctl values are set for networking
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+  with_items:
+    - { name: "net.bridge.bridge-nf-call-iptables", value: "1" }
+    - { name: "net.ipv4.ip_forward", value: "1" }
+    - { name: "net.bridge.bridge-nf-call-ip6tables", value: "1" }
+
+- name: Make sure firewalld is stopped and disabled
+  systemd:
+    state: stopped
+    enabled: false
+    name: firewalld
+  ignore_errors: True # firewalld has not been installed on CentOS 8 AMIs by default
+    
+- name: Disable SELinux for reboots
+  ansible.posix.selinux:
+    state: disabled
+
+- name: Disable SELinux now
+  command: "setenforce 0"
+
+- name: Update crio configuration
+  ansible.builtin.lineinfile:
+    path: /etc/crio/crio.conf
+    insertafter: 'EOF'
+    line: cgroup_manager = "cgroupfs"
+    state: present
+  

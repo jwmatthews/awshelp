@@ -1,0 +1,124 @@
+---
+  - name: "Create AWS Resources for {{ project_tag }}"
+    hosts: localhost
+    connection: local 
+    tasks:
+    
+    - name: Ensure we have a ssh key for '{{ key_name }}' in '{{ region_name }}'
+      ec2_key:
+          name: "{{ key_name }}"
+          region: "{{ region_name }}"
+      register: ec2_key_result
+
+    - name: Ensure directory exists for {{ ec2_ssh_key_dir }}
+      file:
+        path: "{{ ec2_ssh_key_dir }}"
+        state: directory
+
+    - name: Save private key for '{{ key_name }}' to '{{ ec2_ssh_key_file_path }}'
+      copy: content="{{ ec2_key_result.key.private_key }}" dest="{{ ec2_ssh_key_file_path }}" mode=0600
+      when: ec2_key_result.changed
+
+    - name: create VPC
+      amazon.aws.ec2_vpc_net:
+        name: "{{ vpc_name }}"
+        cidr_block: "{{ vpc_cidr }}"
+        region: "{{ region_name }}"
+        state: "present"
+      register: vpc
+
+    - name: associate subnet to the VPC
+      amazon.aws.ec2_vpc_subnet:
+        vpc_id: "{{ vpc.vpc.id }}"
+        region: "{{ region_name }}"
+        cidr: "{{ subnet_cidr }}"
+        map_public: yes
+        resource_tags:
+          Name: "{{ subnet_name }}"
+        state: "present"
+      register: subnet
+
+    - name: create IGW
+      amazon.aws.ec2_vpc_igw:
+        vpc_id: "{{ vpc.vpc.id }}"
+        region: "{{ region_name }}"
+        tags:
+          Name: "{{ igw_name }}"
+        state: "present"
+      register: igw
+
+    - name: Route IGW
+      amazon.aws.ec2_vpc_route_table:
+        vpc_id: "{{ vpc.vpc.id }}"
+        region: "{{ region_name }}"
+        subnets:
+          - "{{ subnet.subnet.id }}"
+        routes:
+          - dest: 0.0.0.0/0
+            gateway_id: "{{ igw.gateway_id  }}"
+        tags:
+          Name: "{{ route_name }}"
+        state: "present"
+
+    # update the CIDR address in the SSH port section.
+    - name: Create Security Group
+      amazon.aws.ec2_group:
+        name: "{{ security_group_name }}"
+        description: "{{ security_group_description }}"
+        vpc_id: "{{ vpc.vpc.id }}"
+        region: "{{ region_name }}"
+        rules:
+          - proto: tcp
+            ports:
+            - 80
+            cidr_ip: 0.0.0.0/0
+          - proto: tcp
+            ports:
+            - 22
+            cidr_ip: 0.0.0.0/0
+          - proto: tcp
+            ports:
+            - 443
+            cidr_ip: 0.0.0.0/0
+          - proto: tcp
+            ports:
+            - 6443
+            cidr_ip: 0.0.0.0/0
+        state: "present"
+      register: security_group
+
+    - name: Find latest CentOS Stream 8 AMIs  
+      amazon.aws.ec2_ami_info:
+        owners: 125523088429 # CentOS Owner ID
+        region: "{{ region_name }}"
+        filters:
+          name: "CentOS Stream 8*"
+          architecture: "x86_64"
+      register: findami  
+
+    - name: Sort the latest CentOS AMIs
+      set_fact:
+        latest_centos_ami: >
+          {{ findami.images | sort(attribute='creation_date') | last }} 
+      
+    - name: Create EC2 Instances
+      amazon.aws.ec2_instance:
+        image_id: "{{ latest_centos_ami.image_id }}"
+        wait: yes
+        instance_type: "{{ instance_type }}"
+        region: "{{ region_name }}"
+        security_group: "{{ security_group_name }}"
+        vpc_subnet_id: "{{ subnet.subnet.id }}"
+        key_name: "{{ key_name }}"
+        network:
+          assign_public_ip: true
+        volumes:
+        - device_name: /dev/sda1
+          ebs:
+            volume_size: 250
+            delete_on_termination: true
+        tags:
+          Name: "{{ project_tag }}_{{ batch_name }}_node{{ item }}"
+          Role: "{{ batch_name }}"
+      register: ec2_inst_worker
+      with_sequence: start=1 end={{ desired_num_instances }}

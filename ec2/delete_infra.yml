@@ -1,0 +1,85 @@
+---
+  - name: "Delete AWS Resources for {{ project_tag }}"
+    hosts: localhost
+    connection: local
+    vars: 
+      delete_ec2_ssh_key: false 
+    tasks:
+    
+    # Need to delete instances before we can clean up VPC infra
+    - name: Delete EC2 servers
+      amazon.aws.ec2_instance:
+        wait: yes
+        instance_type: "{{ instance_type }}"
+        region: "{{ region_name }}"
+        filters:
+          tag:Name: "{{ project_tag }}*"
+        state: "absent"
+      register: ec2_inst_workers    
+    - debug:
+        var: ec2_inst_workers
+    
+    - name: Delete EC2 Key - {{ key_name }} in {{ region_name }}
+      amazon.aws.ec2_key:
+        name: "{{ key_name }}"
+        region: "{{ region_name }}"
+        state: "absent"
+    
+    - name: Stop running
+      fail: msg="Let's stop"
+
+    - name: Lookup VPC so we can begin to delete associated components
+      amazon.aws.ec2_vpc_net:
+        name: "{{ vpc_name }}"
+        cidr_block: "{{ vpc_cidr }}"
+        region: "{{ region_name }}"
+        state: "present"
+      register: vpc
+
+    - name: Delete Security Group
+      amazon.aws.ec2_group:
+        name: "{{ security_group_name }}"
+        region: "{{ region_name }}"
+        vpc_id: "{{ vpc.vpc.id }}"
+        state: "absent"
+      register: security_group
+      when: vpc
+
+    - name: Delete Route IGW
+      amazon.aws.ec2_vpc_route_table:
+        region: "{{ region_name }}"
+        vpc_id: "{{ vpc.vpc.id }}"
+        tags:
+          Name: "{{ route_name }}"
+        state: "absent"
+      when: vpc
+
+    - name: Delete IGW
+      amazon.aws.ec2_vpc_igw:
+        region: "{{ region_name }}"
+        vpc_id: "{{ vpc.vpc.id }}"
+        tags:
+          Name: "{{ igw_name }}"
+        state: "absent"
+      register: igw
+      when: vpc
+
+    - name: Unassociate subnet to the VPC
+      amazon.aws.ec2_vpc_subnet:
+        region: "{{ region_name }}"
+        vpc_id: "{{ vpc.vpc.id }}"
+        cidr: "{{ subnet_cidr }}"
+        resource_tags:
+          Name: "{{ subnet_name }}"
+        state: "absent"
+      register: subnet
+      when: vpc
+
+    - name: Delete VPC
+      amazon.aws.ec2_vpc_net:
+        name: "{{ vpc_name }}"
+        region: "{{ region_name }}"
+        cidr_block: "{{ vpc_cidr }}"
+        state: "absent"
+      register: vpc
+

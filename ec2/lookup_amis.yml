@@ -1,0 +1,44 @@
+---
+  - name: "Lookup AMIs"
+    hosts: localhost
+    connection: local 
+    vars:
+      region_name: us-west-1
+    tasks:
+    - name: Find latest RHEL AMIs  
+      amazon.aws.ec2_ami_info:
+        owners: 309956199498 # RHEL Owner ID
+        region: "{{ region_name }}"
+        filters:
+          name: "RHEL-8.5.0*"
+          architecture: "x86_64"
+      register: findami  
+    - debug:
+        msg: "{{ findami }}"
+
+    - name: Sort the latest RHEL AMI 
+      set_fact:
+        latest_rhel_ami: >
+          {{ findami.images | sort(attribute='creation_date') | last }} 
+    - debug:
+        msg: "{{ latest_rhel_ami }}"
+
+    - name: Find latest CentOS AMIs  
+      amazon.aws.ec2_ami_info:
+        owners: 125523088429 # CentOS Owner ID
+        region: "{{ region_name }}"
+        filters:
+          name: "CentOS Stream 8*"
+          architecture: "x86_64"
+      register: findami  
+    - debug:
+        msg: "{{ findami }}"
+
+    - name: Sort the latest CentOS AMIs
+      set_fact:
+        latest_centos_ami: >
+          {{ findami.images | sort(attribute='creation_date') | last }} 
+    - debug:
+        msg: "{{ latest_centos_ami }}"
+
+   

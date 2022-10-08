@@ -1,0 +1,3 @@
+---
+# defaults file for crio
+upgrade_packages: false

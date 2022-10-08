@@ -1,0 +1,53 @@
+---
+# tasks file for hacking
+
+# 
+- name: get user home directory
+  shell: >
+    getent passwd `whoami` | awk -F: '{ print $6 }'
+  changed_when: false
+  register: user_home
+
+- name: Make a directory for source checkouts
+  file:
+    path: "{{ user_home.stdout }}/src"
+    state: directory
+
+- name: Install/Upgrade misc packages
+  dnf:
+    name: "{{ item }}"
+    state: latest
+  with_items:
+    - vim
+    - git  
+    - jq
+    - tree
+  become: yes
+
+- git:
+    repo: 'https://github.com/konveyor/tackle2-hub.git'
+    dest: "{{ user_home.stdout }}/git/tackle2-hub"
+
+- git:
+    repo: 'https://github.com/konveyor/tackle2-operator.git'
+    dest: "{{ user_home.stdout }}/src/tackle2-operator"
+
+- git:
+    repo: 'https://github.com/konveyor/tackle2-addon.git'
+    dest: "{{ user_home.stdout }}/src/tackle2-addons"
+
+
+#- file:
+#    src: "{{ item.path }}"
+#    dest: "{{ item.dest }}"
+#    state: link
+#  with_items:
+#    - { path: "{{ user_home.stdout }}/src/crane/hack/minikube-clusters-start.sh", dest: "{{ user_home.stdout }}/minikube-clusters-start.sh" }
+#    - { path: "{{ user_home.stdout }}/src/crane/hack/minikube-clusters-delete.sh", dest: "{{ user_home.stdout }}/minikube-clusters-delete.sh" }
+
+#- name: Run minikube-clusters-start.sh
+#  command: "./minikube-clusters-start.sh"
+#  args:
+#    chdir: "{{ user_home.stdout }}"
+#    creates: "{{ user_home.stdout }}/.minikube/profiles/src/config.json"
+

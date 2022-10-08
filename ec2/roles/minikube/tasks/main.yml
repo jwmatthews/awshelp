@@ -1,0 +1,98 @@
+---
+# tasks file for minikube
+# Install minikube
+- name: Install/Upgrade misc packages
+  dnf:
+    name: "{{ item }}"
+    state: latest
+  with_items:
+    - podman
+    - curl 
+    - conntrack
+    - git
+  become: yes
+
+- name: get user home directory
+  shell: >
+    getent passwd `whoami` | awk -F: '{ print $6 }'
+  changed_when: false
+  register: user_home
+
+- name: Make a directory for binaries
+  file:
+    path: "{{ user_home.stdout }}/bin"
+    state: directory
+
+- name: Download kubectl
+  get_url:
+    url: https://storage.googleapis.com/kubernetes-release/release/v1.23.3/bin/linux/amd64/kubectl
+    dest: "{{ user_home.stdout }}/bin/kubectl"
+    mode: '0777'
+
+- name: Download minikube
+  get_url:
+    url: https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+    dest: "{{ user_home.stdout }}/bin/minikube"
+    mode: '0777'
+
+- name: Download yq
+  get_url:
+    url: https://github.com/mikefarah/yq/releases/download/v4.17.2/yq_linux_amd64
+    dest: "{{ user_home.stdout }}/bin/yq"
+    mode: '0777'
+
+- name: Download kustomize
+  get_url:
+    url: https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv4.4.1/kustomize_v4.4.1_linux_amd64.tar.gz
+    dest: "{{ user_home.stdout }}/bin/kustomize_v4.4.1_linux_amd64.tar.gz"
+    mode: '0666'
+
+- name: Unarchive kustomize download
+  ansible.builtin.unarchive:
+    src: "{{ user_home.stdout }}/bin/kustomize_v4.4.1_linux_amd64.tar.gz"
+    dest: "{{ user_home.stdout }}/bin"
+    remote_src: yes
+
+- name: Download krew
+  get_url:
+    url: https://github.com/kubernetes-sigs/krew/releases/download/v0.4.2/krew-linux_amd64.tar.gz
+    dest: "{{ user_home.stdout }}/bin/krew-linux_amd64.tar.gz"
+    mode: '0666'
+
+- name: Unarchive krew-linux_amd64.tar.gz download
+  ansible.builtin.unarchive:
+    src: "{{ user_home.stdout }}/bin/krew-linux_amd64.tar.gz"
+    dest: "{{ user_home.stdout }}/bin"
+    remote_src: yes
+
+- file:
+    src: "{{ user_home.stdout }}/bin/krew-linux_amd64"
+    dest: "{{ user_home.stdout }}/bin/krew"
+    state: link
+
+- name: Update users $PATH
+  ansible.builtin.lineinfile:
+    path: "{{ user_home.stdout }}/.bashrc"
+    line: "PATH=$PATH:~/bin:~/.krew/bin"
+    create: yes
+
+# Note, git needs to be installed prior
+- name: Install krew
+  command: "krew install krew"
+  args:
+    creates: "{{ user_home.stdout }}/.krew/bin/kubectl-krew"
+
+- name: krew install kubectx 
+  command: "krew install ctx"
+  args:
+    creates: "{{ user_home.stdout }}/.krew/bin/kubectl-ctx"
+
+- name: krew install kubens
+  command: "krew install ns"
+  args:
+    creates: "{{ user_home.stdout }}/.krew/bin/kubectl-ns"
+
+- name: Update minikube config to use podman as default driver  
+  command: "minikube config set driver podman"
+
+
