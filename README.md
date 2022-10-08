@@ -1,2 +1,2 @@
-# aws2help
+# awshelp
 Ansible and python scripts working with AWS
