@@ -8,10 +8,31 @@
   changed_when: false
   register: user_home
 
-- name: Make a directory for source checkouts
+- name: Make a directory for source checkout
   file:
     path: "{{ user_home.stdout }}/src"
     state: directory
+
+- name: Make a directory for 'hacking'
+  file:
+    path: "{{ user_home.stdout }}/src/hacking"
+    state: directory
+
+- name: Make a directory for ~/go/bin
+  file:
+    path: "{{ user_home.stdout }}/go/bin"
+    state: directory
+
+- name: Make a directory for ~/go/pkg
+  file:
+    path: "{{ user_home.stdout }}/go/pkg"
+    state: directory
+
+- name: Ensure GOPATH is set in ~/.bashrc
+  ansible.builtin.lineinfile:
+    path: "{{ user_home.stdout }}/.bashrc"
+    regexp: '^export GOPATH='
+    line: "export GOPATH=${HOME}/go"
 
 - name: Install/Upgrade misc packages
   dnf:
@@ -22,19 +43,32 @@
     - git  
     - jq
     - tree
+    - make
+    - golang
+    - gcc
   become: yes
 
 - git:
     repo: 'https://github.com/konveyor/tackle2-hub.git'
-    dest: "{{ user_home.stdout }}/git/tackle2-hub"
+    dest: "{{ user_home.stdout }}/src/konveyor/tackle2-hub"
 
 - git:
     repo: 'https://github.com/konveyor/tackle2-operator.git'
-    dest: "{{ user_home.stdout }}/src/tackle2-operator"
+    dest: "{{ user_home.stdout }}/src/konveyor/tackle2-operator"
 
 - git:
     repo: 'https://github.com/konveyor/tackle2-addon.git'
-    dest: "{{ user_home.stdout }}/src/tackle2-addons"
+    dest: "{{ user_home.stdout }}/src/konveyor/tackle2-addons"
+
+- name: Copy hacking files over
+  copy:
+    src: "{{ item }}"
+    dest: "{{ user_home.stdout }}/src/hacking/{{ item }}"
+    mode: "0755"
+  with_items:
+    - "minikube_start.sh"
+    - "podman_machine_start.sh"
+    - "tackle2-install.sh"
 
 
 #- file:
