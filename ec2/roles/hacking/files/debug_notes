@@ -1,0 +1,10 @@
+# #### As of Oct 2022
+# Note: podman issue with ubi9 and arm64 on Mac
+# Running ubi9 on Apple silicon breaks on unsupported x86_64-v2 instruction set #15456
+# https://github.com/containers/podman/issues/15456
+# Seen as:
+
+$ kubectl logs tackle-hub-d7dffccf8-8bp2z -n konveyor-tackle
+Fatal glibc error: CPU does not support x86-64-v2
+
+
