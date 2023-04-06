@@ -1,0 +1,20 @@
+# Instructions
+#
+# -- REQUIRED -- 
+# Update 'my_name' to be a unique name, initials, etc for yourself in the AWS account you run in.
+#   * this value must satisfy regular expression pattern: [a-zA-Z][-a-zA-Z0-9]*"
+my_name: please-change-me-to-your-initials-or-name
+
+
+# -- Optional -- 
+# Update 'region_name' to the region you want to deploy to
+#region_name: "us-east-1"
+
+# Update 'eks_worker_instancetype' to the instance size you want for worker nodes
+#eks_worker_instancetype: t3.xlarge
+
+# Update 'eks_clusterversion' to the Kubernetes version you want
+#eks_clusterversion: 1.25
+
+
+

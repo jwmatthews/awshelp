@@ -1,0 +1,19 @@
+---
+  - name: "Delete AWS Resources for {{ project_tag }}"
+    hosts: localhost
+    connection: local
+    tasks:
+
+    - name: delete an IAM Role for the EBS CSI Driver '{{ eks_ebs_csi_iam_role_name }}'
+      shell: >
+        eksctl delete iamserviceaccount \
+        --name ebs-csi-controller-sa \
+        --namespace kube-system \
+        --cluster {{ eks_clustername }} \
+        --region {{ region_name }} 
+    
+    - name: create the eks cluster
+      shell: >
+        eksctl delete cluster \
+        --name {{ eks_clustername }} \
+        --region {{ region_name }} \

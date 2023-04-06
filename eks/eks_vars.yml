@@ -1,0 +1,14 @@
+# Please create a my_override_vars.yml  and set 'my_name' in your own my_override_vars.yml  
+my_name: please_override
+
+project_tag: "{{ my_name }}"
+region_name: "us-east-1"
+
+#Note: the value for `eks_clustername` must satisfy regular expression pattern: [a-zA-Z][-a-zA-Z0-9]*"
+eks_clustername: "eks-{{ project_tag }}"
+eks_clusterversion: 1.25
+eks_worker_instancetype: t3.xlarge
+eks_worker_mincount: 3
+eks_worker_maxcount: 6
+
+eks_ebs_csi_iam_role_name: "{{ eks_clustername }}-EKS_EBS_CSI_DriverRole"
