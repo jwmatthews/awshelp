@@ -4,7 +4,7 @@
     connection: local
     tasks:
 
-    - name: delete an IAM Role for the EBS CSI Driver '{{ eks_ebs_csi_iam_role_name }}'
+    - name: delete an IAM Role for the EBS CSI Driver '{{ eks_ebs_csi_iam_role_name }}' for the eks cluster '{{ eks_clustername }}' in {{ region_name }} 
       shell: >
         eksctl delete iamserviceaccount \
         --name ebs-csi-controller-sa \
@@ -12,7 +12,7 @@
         --cluster {{ eks_clustername }} \
         --region {{ region_name }} 
     
-    - name: create the eks cluster
+    - name: delete the eks cluster '{{ eks_clustername }}' in {{ region_name }}  
       shell: >
         eksctl delete cluster \
         --name {{ eks_clustername }} \
