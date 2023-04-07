@@ -29,6 +29,7 @@ This directory will help you deploy an EKS Cluster with the [EBS CSI AddOn](http
 ## Provision EKS Cluster
 Run
 ```
+source env/bin/activate
 ./create_infra.sh
 ```
    * This will take on order of ~20 minutes
@@ -36,6 +37,7 @@ Run
 ## Deprovision EKS Cluster
 Run 
 ```
+source env/bin/activate
 ./delete_infra.sh
 ```
    * This will take on order of ~10 minutes
